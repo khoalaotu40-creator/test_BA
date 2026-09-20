@@ -70,45 +70,6 @@ jobs:
           du -h dist/assets/* dist/server.cjs dist/index.html || true
           echo "==================================="
 
-      - name: Package release artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: cogo-production-bundle
-          path: dist/
-          retention-days: 14
-
-  deploy:
-    name: Deploy, Debug & Publish Preview
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: ${{ (github.event_name == 'pull_request' || contains(github.ref_name, 'preview') || inputs.environment == 'preview') && 'preview' || 'production' }}
-      url: ${{ steps.set-preview-url.outputs.preview_url }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: cogo-production-bundle
-          path: dist
-
-      - name: Debug Verify Build Outputs
-        id: verify-artifacts
-        run: |
-          echo "=== 🔍 Pre-Deploy Artifact Verification ==="
-          ls -la dist
-          test -f dist/index.html || (echo "❌ Error: dist/index.html missing!" && exit 1)
-          test -f dist/server.cjs || (echo "❌ Error: dist/server.cjs missing!" && exit 1)
-          INDEX_SIZE=$(wc -c < dist/index.html | tr -d ' ')
-          SERVER_SIZE=$(wc -c < dist/server.cjs | tr -d ' ')
-          echo "✅ dist/index.html found (${INDEX_SIZE} bytes)"
-          echo "✅ dist/server.cjs found (${SERVER_SIZE} bytes)"
-          echo "index_size=${INDEX_SIZE}" >> $GITHUB_OUTPUT
-          echo "server_size=${SERVER_SIZE}" >> $GITHUB_OUTPUT
-          echo "==========================================="
-
       - name: Debug Syntax & Dry-run Server Startup
         run: |
           echo "=== 🧪 Server Dry-Run Diagnostic ==="
@@ -129,6 +90,45 @@ jobs:
             }, 1200);
           "
           echo "====================================="
+
+      - name: Package release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cogo-production-bundle
+          path: dist/
+          retention-days: 14
+
+  deploy:
+    name: Deploy & Publish Preview
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ (github.event_name == 'pull_request' || contains(github.ref_name, 'preview') || inputs.environment == 'preview') && 'preview' || 'production' }}
+      url: ${{ steps.set-preview-url.outputs.preview_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cogo-production-bundle
+          path: dist
+
+      - name: Pre-Deploy Artifact Verification
+        id: verify-artifacts
+        run: |
+          echo "=== 🔍 Pre-Deploy Artifact Verification ==="
+          ls -la dist
+          test -f dist/index.html || (echo "❌ Error: dist/index.html missing!" && exit 1)
+          test -f dist/server.cjs || (echo "❌ Error: dist/server.cjs missing!" && exit 1)
+          INDEX_SIZE=$(wc -c < dist/index.html | tr -d ' ')
+          SERVER_SIZE=$(wc -c < dist/server.cjs | tr -d ' ')
+          echo "✅ dist/index.html found (${INDEX_SIZE} bytes)"
+          echo "✅ dist/server.cjs found (${SERVER_SIZE} bytes)"
+          echo "index_size=${INDEX_SIZE}" >> $GITHUB_OUTPUT
+          echo "server_size=${SERVER_SIZE}" >> $GITHUB_OUTPUT
+          echo "==========================================="
 
       - name: Determine Deployment URL
         id: set-preview-url
