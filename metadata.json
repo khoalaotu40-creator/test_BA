@@ -1,0 +1,7 @@
+{
+  "name": "Cogo - Đồng Bộ Xác Thực Sinh Viên",
+  "description": "Ứng dụng Cogo chia sẻ chuyến đi sinh viên với giao diện tối giản chuẩn mẫu và hỗ trợ đồng bộ dữ liệu trực tuyến.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
