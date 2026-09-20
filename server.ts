@@ -1,10 +1,6 @@
 import express from "express";
 import path from "path";
-import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 interface ServerUser {
   id: string;
@@ -116,7 +112,9 @@ let syncStore: ServerStore = {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  // In AI Studio container, port 3000 is required by the reverse proxy.
+  // On platforms like Render (where process.env.RENDER is 'true'), adapt to process.env.PORT.
+  const PORT = process.env.RENDER ? (Number(process.env.PORT) || 3000) : 3000;
 
   app.use(express.json({ limit: "20mb" }));
   app.use(express.urlencoded({ extended: true, limit: "20mb" }));
@@ -346,14 +344,16 @@ async function startServer() {
   });
 
   // Vite middleware for development or static in production
-  if (process.env.NODE_ENV !== "production") {
+  const isProduction = process.env.NODE_ENV === "production" || Boolean(process.env.RENDER);
+
+  if (!isProduction) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
+    const distPath = path.resolve(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
