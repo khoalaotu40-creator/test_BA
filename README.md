@@ -1,0 +1,134 @@
+# Cogo - Đi Chung An Toàn 🚗🎓
+
+Nền tảng kết nối đi chung xe an toàn dành riêng cho sinh viên các trường Đại học & Cao đẳng, với quy trình xác thực sinh viên chính danh qua Mã số sinh viên (MSSV) và ảnh thẻ sinh viên.
+
+---
+
+## 🌟 Tính Năng Nổi Bật
+
+- **Quy trình xác thực sinh viên chặt chẽ**:
+  - Lựa chọn trường Đại học / Cao đẳng từ danh sách chuẩn hóa.
+  - Nhập MSSV và xác minh thông tin sinh viên chính chủ.
+  - Tải ảnh thẻ sinh viên hoặc chụp ảnh trực tiếp qua Webcam/Camera thiết bị.
+- **Trải nghiệm xác thực & tài khoản chuẩn mẫu thiết kế**:
+  - Giao diện đăng nhập số điện thoại với bộ lọc bảo mật.
+  - Đăng ký tài khoản nhanh chóng, trực quan.
+  - Huy hiệu sinh viên xác thực (*Verified Student Badge*) tăng độ tin cậy khi kết nối chuyến đi.
+- **Đồng bộ hóa dữ liệu toàn diện (Full-Stack Sync)**:
+  - API máy chủ `/api/sync` đồng bộ dữ liệu thời gian thực.
+  - Sao lưu và phục hồi dữ liệu qua tệp JSON (Export / Import).
+  - Tự động lưu trữ cục bộ khi mất kết nối mạng (Offline-first fallback).
+- **Hai chế độ hiển thị linh hoạt**:
+  - 📱 **Interactive View**: Mô phỏng trải nghiệm ứng dụng thực tế trên khung điện thoại thông minh.
+  - 🖼️ **Mockup Overview**: Xem song song 3 màn hình mẫu (Đăng nhập, Đăng ký, Xác thực) để dễ dàng kiểm thử và đối chiếu thiết kế.
+
+---
+
+## 🛠️ Công Nghệ Sử Dụng
+
+- **Frontend**:
+  - [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
+  - [Tailwind CSS v4](https://tailwindcss.com/)
+  - [Motion](https://motion.dev/) (Animation mượt mà)
+  - [Lucide React](https://lucide.dev/) (Bộ icon chuẩn)
+  - [Vite 8](https://vite.dev/)
+- **Backend & Server**:
+  - [Node.js](https://nodejs.org/) & [Express](https://expressjs.com/)
+  - Đóng gói [esbuild](https://esbuild.github.io/) cho bundle `dist/server.cjs`
+- **CI/CD & DevOps**:
+  - GitHub Actions Workflows (`frontend.yml`, `backend.yml`, `deploy.yml`)
+  - Sẵn sàng triển khai tức thì trên [Render](https://render.com/) hoặc Cloud Run
+
+---
+
+## 🚀 Hướng Dẫn Cài Đặt & Chạy Cục Bộ
+
+### 1. Yêu cầu hệ thống
+- Node.js >= 20.0.0
+- npm >= 9.0.0
+
+### 2. Cài đặt các gói thư viện
+```bash
+npm install
+```
+
+### 3. Chạy môi trường phát triển (Development)
+```bash
+npm run dev
+```
+Ứng dụng sẽ khởi chạy tại: `http://localhost:3000`
+
+### 4. Kiểm tra TypeScript & Đóng gói sản phẩm (Build)
+```bash
+# Kiểm tra lỗi typecheck
+npm run lint
+
+# Đóng gói cả frontend SPA và backend server
+npm run build
+
+# Chạy server sản xuất đã đóng gói
+npm start
+```
+
+---
+
+## 🌐 Hướng Dẫn Triển Khai Lên Render (Web Service)
+
+1. Đăng nhập vào [Render Dashboard](https://dashboard.render.com/) và chọn **New +** -> **Web Service**.
+2. Kết nối với kho lưu trữ GitHub chứa dự án này.
+3. Điền các thông số cấu hình:
+   - **Name**: `cogo-rideshare` (hoặc tên tùy chọn)
+   - **Environment**: `Node`
+   - **Branch**: `main` (hoặc `master`)
+   - **Build Command**:
+     ```bash
+     npm install && npm run build
+     ```
+   - **Start Command**:
+     ```bash
+     npm start
+     ```
+4. Nhấn **Create Web Service**. 
+*(Hệ thống máy chủ đã được tích hợp tự động nhận diện biến môi trường `PORT` và `RENDER` của Render mà không cần thiết lập thủ công)*.
+
+---
+
+## 🔄 Cấu Trúc CI/CD Workflows
+
+Dự án được trang bị sẵn các kịch bản kiểm thử và triển khai tự động trong thư mục `.github/workflows/` (và `workflow/`):
+
+| Tệp Workflow | Mục Đích |
+| :--- | :--- |
+| **`frontend.yml`** | Kiểm tra cú pháp TypeScript và build kiểm thử giao diện React khi có commit frontend. |
+| **`backend.yml`** | Typecheck và đóng gói bundle `dist/server.cjs` máy chủ Express bằng esbuild. |
+| **`deploy.yml`** | Pipeline tự động build toàn diện và sẵn sàng phát hành khi hợp nhất mã nguồn vào nhánh chính. |
+
+---
+
+## 📁 Cấu Trúc Thư Mục Dự Án
+
+```
+├── .github/workflows/       # GitHub Actions CI/CD workflows
+│   ├── frontend.yml
+│   ├── backend.yml
+│   └── deploy.yml
+├── public/                  # Tài nguyên tĩnh
+├── src/
+│   ├── components/          # Các components giao diện (Màn hình đăng nhập, xác thực thẻ,...)
+│   ├── data/                # Dữ liệu mẫu danh sách trường học và chuyến đi
+│   ├── services/            # Tầng dịch vụ đồng bộ máy chủ và local storage
+│   ├── types.ts             # Định nghĩa kiểu dữ liệu TypeScript
+│   ├── App.tsx              # Điều phối luồng màn hình chính
+│   ├── main.tsx             # Điểm gắn kết ứng dụng React
+│   └── index.css            # Cấu hình Tailwind CSS v4
+├── server.ts                # Máy chủ Express & API đồng bộ dữ liệu
+├── vite.config.ts           # Cấu hình Vite
+├── package.json             # Danh mục thư viện và scripts
+└── README.md                # Tài liệu hướng dẫn dự án
+```
+
+---
+
+## 📄 Bản Quyền & Giấy Phép
+
+Dự án phát triển với mục tiêu đem lại giải pháp di chuyển an toàn, tiết kiệm và gắn kết cho cộng đồng sinh viên.
