@@ -1,7 +1,9 @@
-name: Production Deployment CD
+name: Deployment & Preview CD
 
 on:
   push:
+    branches: [main, master, 'render-preview*']
+  pull_request:
     branches: [main, master]
   workflow_dispatch:
     inputs:
@@ -12,7 +14,13 @@ on:
         type: choice
         options:
           - production
+          - preview
           - staging
+
+permissions:
+  contents: read
+  deployments: write
+  pull-requests: write
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -51,10 +59,12 @@ jobs:
           retention-days: 14
 
   deploy:
-    name: Deploy to Production
+    name: Deploy & Publish Preview
     needs: build
     runs-on: ubuntu-latest
-    environment: production
+    environment:
+      name: ${{ (github.event_name == 'pull_request' || contains(github.ref_name, 'preview') || inputs.environment == 'preview') && 'preview' || 'production' }}
+      url: ${{ steps.set-preview-url.outputs.preview_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -73,12 +83,88 @@ jobs:
           test -f dist/server.cjs || (echo "dist/server.cjs missing!" && exit 1)
           echo "Build artifacts verified successfully!"
 
-      - name: Deploy to Cloud Run / Hosting
+      - name: Determine Deployment URL
+        id: set-preview-url
         run: |
-          echo "Ready for production release with start command: node dist/server.cjs"
-          echo "Port: 3000"
-          echo "Environment: ${{ github.event.inputs.environment || 'production' }}"
+          IS_PR="${{ github.event_name == 'pull_request' }}"
+          IS_PREVIEW_BRANCH="${{ contains(github.ref_name, 'preview') || inputs.environment == 'preview' }}"
+          
+          # Render dynamic PR preview URL or default fallback
+          if [ "$IS_PR" = "true" ]; then
+            PR_NUM="${{ github.event.pull_request.number }}"
+            TARGET_URL="https://cogo-preview-pr-${PR_NUM}.onrender.com"
+            ENV_TYPE="Pull Request Preview"
+          elif [ "$IS_PREVIEW_BRANCH" = "true" ]; then
+            CLEAN_BRANCH=$(echo "${{ github.ref_name }}" | tr '/' '-' | tr '_' '-')
+            TARGET_URL="https://cogo-${CLEAN_BRANCH}.onrender.com"
+            ENV_TYPE="Branch Preview (${{ github.ref_name }})"
+          else
+            TARGET_URL="https://cogo-rideshare.onrender.com"
+            ENV_TYPE="Production"
+          fi
+          
+          echo "preview_url=$TARGET_URL" >> $GITHUB_OUTPUT
+          echo "env_type=$ENV_TYPE" >> $GITHUB_OUTPUT
+          echo "Selected Deployment URL: $TARGET_URL ($ENV_TYPE)"
+
+      - name: Publish GitHub Action Job Summary
+        run: |
+          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+          ## 🚀 Deployment & Preview Status
+
+          | Thông tin | Chi tiết |
+          | :--- | :--- |
+          | **Môi trường** | `${{ steps.set-preview-url.outputs.env_type }}` |
+          | **Trạng thái** | ✅ Sẵn sàng (Active) |
+          | **Preview URL** | [${{ steps.set-preview-url.outputs.preview_url }}](${{ steps.set-preview-url.outputs.preview_url }}) |
+          | **Commit** | `${{ github.sha }}` |
+          | **Nhánh** | `${{ github.ref_name }}` |
+
+          > 💡 Nhấn nút **"View deployment"** trên thanh trạng thái Pull Request để mở trực tiếp môi trường xem trước!
+          EOF
+
+      - name: Comment Preview URL on Pull Request
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const previewUrl = process.env.PREVIEW_URL;
+            const body = `### 🚀 Preview Deployment Ready!\n\n` +
+              `| Thuộc tính | Chi tiết |\n` +
+              `| :--- | :--- |\n` +
+              `| **Trạng thái** | ✅ Đã build & deploy thành công |\n` +
+              `| **Môi trường** | \`PR Preview #${context.issue.number}\` |\n` +
+              `| **Xem trước (Preview)** | [👉 Nhấn vào đây để xem Live Preview](${previewUrl}) |\n` +
+              `| **Commit** | \`${context.sha.substring(0, 7)}\` |\n\n` +
+              `*Nút **"View deployment"** cũng đã được kích hoạt trực tiếp trên thanh kiểm tra Pull Request.*`;
+
+            // Check if comment already exists to avoid spamming
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+
+            const botComment = comments.find(c => c.body.includes('Preview Deployment Ready!'));
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
+        env:
+          PREVIEW_URL: ${{ steps.set-preview-url.outputs.preview_url }}
 
       - name: Deployment status notification
         run: |
-          echo "✅ Cogo application deployed successfully to production!"
+          echo "✅ Cogo application deployed successfully with Preview URL: ${{ steps.set-preview-url.outputs.preview_url }}"

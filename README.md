@@ -93,6 +93,18 @@ npm start
 
 ---
 
+## 🔍 Môi Trường Xem Trước & Deploy Preview (Pull Request)
+
+Dự án hỗ trợ tính năng **Deploy Preview tự động** khi mở hoặc cập nhật Pull Request trên GitHub:
+
+- **Nút "View deployment" trực tiếp trên PR**: Khi workflow `deploy.yml` chạy thành công, GitHub Actions sẽ kích hoạt deployment environment `preview` kèm theo URL xem trước. Người đánh giá (reviewer) chỉ cần nhấn **"View deployment"** ngay trong khung trạng thái của Pull Request để mở bản demo.
+- **Bình luận tự động (PR Preview Comment)**: GitHub Actions tự động đăng một bình luận kèm liên kết Live Preview, mã commit và trạng thái build.
+- **Kích hoạt Render Pull Request Previews** (tùy chọn):
+  1. Trên Render Dashboard, vào service của bạn -> chọn tab **Settings**.
+  2. Bật tính năng **Pull Request Previews** (Render sẽ tự động tạo một phiên bản máy chủ tạm thời cho mỗi PR và tự hủy khi PR đóng lại).
+
+---
+
 ## 🔄 Cấu Trúc CI/CD Workflows
 
 Dự án được trang bị sẵn các kịch bản kiểm thử và triển khai tự động trong thư mục `.github/workflows/` (và `workflow/`):
@@ -101,7 +113,7 @@ Dự án được trang bị sẵn các kịch bản kiểm thử và triển kh
 | :--- | :--- |
 | **`frontend.yml`** | Kiểm tra cú pháp TypeScript và build kiểm thử giao diện React khi có commit frontend. |
 | **`backend.yml`** | Typecheck và đóng gói bundle `dist/server.cjs` máy chủ Express bằng esbuild. |
-| **`deploy.yml`** | Pipeline tự động build toàn diện và sẵn sàng phát hành khi hợp nhất mã nguồn vào nhánh chính. |
+| **`deploy.yml`** | Pipeline tự động build, đóng gói, tạo Deploy Preview trên Pull Request và triển khai Production khi merge vào `main`. |
 
 ---
 
@@ -133,5 +145,3 @@ Dự án được trang bị sẵn các kịch bản kiểm thử và triển kh
 
 Dự án phát triển với mục tiêu đem lại giải pháp di chuyển an toàn, tiết kiệm và gắn kết cho cộng đồng sinh viên.
 
-
-kiểm tra ver 1
