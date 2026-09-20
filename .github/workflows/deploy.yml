@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   build:
-    name: Full Application Build
+    name: Full Application Build & Diagnostics
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -39,6 +39,17 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+
+      - name: Debug Environment Info
+        run: |
+          echo "=== 🔍 CI/CD Environment Diagnostics ==="
+          echo "Node version: $(node -v)"
+          echo "npm version:  $(npm -v)"
+          echo "Git commit:   ${{ github.sha }}"
+          echo "Git branch:   ${{ github.ref_name }}"
+          echo "Event name:   ${{ github.event_name }}"
+          echo "OS Platform:  $(uname -a)"
+          echo "========================================="
 
       - name: Install dependencies
         run: npm ci || npm install
@@ -51,6 +62,14 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Debug Build Outputs
+        run: |
+          echo "=== 📦 Build Output Diagnostics ==="
+          ls -la dist
+          echo "Asset file sizes:"
+          du -h dist/assets/* dist/server.cjs dist/index.html || true
+          echo "==================================="
+
       - name: Package release artifact
         uses: actions/upload-artifact@v4
         with:
@@ -59,7 +78,7 @@ jobs:
           retention-days: 14
 
   deploy:
-    name: Deploy & Publish Preview
+    name: Deploy, Debug & Publish Preview
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -75,13 +94,41 @@ jobs:
           name: cogo-production-bundle
           path: dist
 
-      - name: Verify build outputs
+      - name: Debug Verify Build Outputs
+        id: verify-artifacts
         run: |
-          echo "Verifying compiled assets in dist/..."
+          echo "=== 🔍 Pre-Deploy Artifact Verification ==="
           ls -la dist
-          test -f dist/index.html || (echo "dist/index.html missing!" && exit 1)
-          test -f dist/server.cjs || (echo "dist/server.cjs missing!" && exit 1)
-          echo "Build artifacts verified successfully!"
+          test -f dist/index.html || (echo "❌ Error: dist/index.html missing!" && exit 1)
+          test -f dist/server.cjs || (echo "❌ Error: dist/server.cjs missing!" && exit 1)
+          INDEX_SIZE=$(wc -c < dist/index.html | tr -d ' ')
+          SERVER_SIZE=$(wc -c < dist/server.cjs | tr -d ' ')
+          echo "✅ dist/index.html found (${INDEX_SIZE} bytes)"
+          echo "✅ dist/server.cjs found (${SERVER_SIZE} bytes)"
+          echo "index_size=${INDEX_SIZE}" >> $GITHUB_OUTPUT
+          echo "server_size=${SERVER_SIZE}" >> $GITHUB_OUTPUT
+          echo "==========================================="
+
+      - name: Debug Syntax & Dry-run Server Startup
+        run: |
+          echo "=== 🧪 Server Dry-Run Diagnostic ==="
+          echo "Step 1: Validating CommonJS syntax..."
+          node --check dist/server.cjs
+          echo "✅ dist/server.cjs syntax check passed!"
+
+          echo "Step 2: Simulating server boot in Production Mode..."
+          node -e "
+            process.env.NODE_ENV = 'production';
+            process.env.RENDER = 'true';
+            process.env.PORT = '3999';
+            console.log('Loading dist/server.cjs...');
+            require('./dist/server.cjs');
+            setTimeout(() => {
+              console.log('✅ Server dry-run boot test passed with exit code 0!');
+              process.exit(0);
+            }, 1200);
+          "
+          echo "====================================="
 
       - name: Determine Deployment URL
         id: set-preview-url
@@ -110,17 +157,22 @@ jobs:
       - name: Publish GitHub Action Job Summary
         run: |
           cat << 'EOF' >> $GITHUB_STEP_SUMMARY
-          ## 🚀 Deployment & Preview Status
+          ## 🚀 Deployment & Debug Status
 
-          | Thông tin | Chi tiết |
+          | Thông số kiểm tra | Kết quả chẩn đoán |
           | :--- | :--- |
           | **Môi trường** | `${{ steps.set-preview-url.outputs.env_type }}` |
-          | **Trạng thái** | ✅ Sẵn sàng (Active) |
+          | **Trạng thái Deploy** | ✅ Sẵn sàng hoạt động (Active) |
+          | **Dry-Run Server Boot** | ✅ Passed (node --check & startup verification) |
+          | **Kích thước index.html** | `${{ steps.verify-artifacts.outputs.index_size }} bytes` |
+          | **Kích thước server.cjs** | `${{ steps.verify-artifacts.outputs.server_size }} bytes` |
           | **Preview URL** | [${{ steps.set-preview-url.outputs.preview_url }}](${{ steps.set-preview-url.outputs.preview_url }}) |
+          | **API Healthcheck** | [${{ steps.set-preview-url.outputs.preview_url }}/api/health](${{ steps.set-preview-url.outputs.preview_url }}/api/health) |
+          | **API Diagnostics** | [${{ steps.set-preview-url.outputs.preview_url }}/api/debug](${{ steps.set-preview-url.outputs.preview_url }}/api/debug) |
           | **Commit** | `${{ github.sha }}` |
           | **Nhánh** | `${{ github.ref_name }}` |
 
-          > 💡 Nhấn nút **"View deployment"** trên thanh trạng thái Pull Request để mở trực tiếp môi trường xem trước!
+          > 💡 **Mẹo gỡ lỗi:** Nhấn nút **"View deployment"** trên giao diện Pull Request hoặc truy cập `/api/debug` trên đường dẫn preview để xem chi tiết thông số runtime (RAM, Uptime, Node version).
           EOF
 
       - name: Comment Preview URL on Pull Request
@@ -129,16 +181,19 @@ jobs:
         with:
           script: |
             const previewUrl = process.env.PREVIEW_URL;
+            const healthUrl = `${previewUrl}/api/health`;
+            const debugUrl = `${previewUrl}/api/debug`;
             const body = `### 🚀 Preview Deployment Ready!\n\n` +
               `| Thuộc tính | Chi tiết |\n` +
               `| :--- | :--- |\n` +
-              `| **Trạng thái** | ✅ Đã build & deploy thành công |\n` +
+              `| **Trạng thái** | ✅ Đã build, test dry-run & deploy thành công |\n` +
               `| **Môi trường** | \`PR Preview #${context.issue.number}\` |\n` +
-              `| **Xem trước (Preview)** | [👉 Nhấn vào đây để xem Live Preview](${previewUrl}) |\n` +
+              `| **Live Preview** | [👉 Mở bản xem trước](${previewUrl}) |\n` +
+              `| **Kiểm tra Health** | [🟢 ${healthUrl}](${healthUrl}) |\n` +
+              `| **Chẩn đoán Debug** | [🔍 ${debugUrl}](${debugUrl}) |\n` +
               `| **Commit** | \`${context.sha.substring(0, 7)}\` |\n\n` +
               `*Nút **"View deployment"** cũng đã được kích hoạt trực tiếp trên thanh kiểm tra Pull Request.*`;
 
-            // Check if comment already exists to avoid spamming
             const { data: comments } = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,

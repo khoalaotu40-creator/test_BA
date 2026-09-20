@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 
 interface ServerUser {
@@ -119,9 +120,81 @@ async function startServer() {
   app.use(express.json({ limit: "20mb" }));
   app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
-  // API Health check
+  // API Health check with basic metrics
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", service: "Cogo Sync API", time: new Date().toISOString() });
+    res.json({
+      status: "ok",
+      service: "Cogo Rideshare API",
+      environment: isProduction ? "production" : "development",
+      uptimeSeconds: Math.floor(process.uptime()),
+      time: new Date().toISOString(),
+    });
+  });
+
+  // Comprehensive Deployment & Environment Diagnostics
+  app.get("/api/debug", (req, res) => {
+    const distPath = path.resolve(process.cwd(), "dist");
+    const indexHtmlPath = path.join(distPath, "index.html");
+    const serverCjsPath = path.join(distPath, "server.cjs");
+    const hasDistDir = fs.existsSync(distPath);
+    const hasIndexHtml = fs.existsSync(indexHtmlPath);
+    const hasServerCjs = fs.existsSync(serverCjsPath);
+
+    let indexHtmlSize = 0;
+    let serverCjsSize = 0;
+    try {
+      if (hasIndexHtml) indexHtmlSize = fs.statSync(indexHtmlPath).size;
+      if (hasServerCjs) serverCjsSize = fs.statSync(serverCjsPath).size;
+    } catch (e) {
+      // ignore stat errors in debug
+    }
+
+    const mem = process.memoryUsage();
+
+    res.json({
+      success: true,
+      service: "Cogo Deployment Diagnostics",
+      runtime: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        architecture: process.arch,
+        uptimeSeconds: Math.floor(process.uptime()),
+        memoryRssMb: Math.round(mem.rss / 1024 / 1024),
+        memoryHeapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+        processId: process.pid,
+      },
+      deployment: {
+        mode: isProduction ? "PRODUCTION" : "DEVELOPMENT",
+        isProductionFlag: isProduction,
+        isRenderCloud: Boolean(process.env.RENDER),
+        listeningPort: PORT,
+        portEnvRaw: process.env.PORT || "(unset)",
+        nodeEnvRaw: process.env.NODE_ENV || "(unset)",
+      },
+      fileSystem: {
+        currentWorkingDirectory: process.cwd(),
+        distResolvedPath: distPath,
+        hasDistDirectory: hasDistDir,
+        hasIndexHtml,
+        indexHtmlSizeBytes: indexHtmlSize,
+        hasServerCjs,
+        serverCjsSizeBytes: serverCjsSize,
+      },
+      store: {
+        version: syncStore.version,
+        usersRegisteredCount: syncStore.users?.length || 0,
+        availableRidesCount: syncStore.rides?.length || 0,
+        currentUser: syncStore.currentUser?.fullName || "(none)",
+        isVerified: syncStore.currentUser?.isVerified || false,
+        lastSyncedAt: syncStore.lastSyncedAt,
+      },
+      network: {
+        clientIp: req.headers["x-forwarded-for"] || req.socket.remoteAddress,
+        hostHeader: req.headers["host"],
+        userAgent: req.headers["user-agent"],
+      },
+      serverTime: new Date().toISOString(),
+    });
   });
 
   // GET full sync state
@@ -361,7 +434,14 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Cogo server running on http://0.0.0.0:${PORT}`);
+    console.log("==================================================");
+    console.log(`🚀 Cogo Server is LIVE and listening on 0.0.0.0:${PORT}`);
+    console.log(`🔧 Mode:       ${isProduction ? "PRODUCTION (serving static dist)" : "DEVELOPMENT (Vite middleware)"}`);
+    console.log(`☁️ Platform:   ${process.env.RENDER ? "Render Cloud Platform" : "Container / Local Host"}`);
+    console.log(`📦 Node:       ${process.version} (${process.platform} ${process.arch})`);
+    console.log(`🟢 Health:     http://0.0.0.0:${PORT}/api/health`);
+    console.log(`🔍 Diagnostics: http://0.0.0.0:${PORT}/api/debug`);
+    console.log("==================================================");
   });
 }
 

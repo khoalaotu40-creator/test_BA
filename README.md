@@ -105,6 +105,44 @@ Dự án hỗ trợ tính năng **Deploy Preview tự động** khi mở hoặc 
 
 ---
 
+## 🛠️ Công Cụ Kiểm Tra & Debug Triển Khai (Deployment Diagnostics)
+
+Dự án cung cấp các phương thức kiểm tra toàn diện để xác thực việc triển khai trên Render / Cloud Server:
+
+### 1. Nút "Kiểm tra Deploy" trực tiếp trên giao diện
+Tại thanh công cụ phía trên ứng dụng, nhấn nút **"Kiểm tra Deploy"** (biểu tượng sóng xung điện tim) để mở bảng thông số tức thì:
+- Môi trường chạy (`PRODUCTION` hay `DEVELOPMENT`).
+- Nền tảng hosting (`Render Cloud Platform` hay `Container / Local`).
+- Kiểm tra sự tồn tại và kích thước của các tệp bundle (`dist/index.html`, `dist/server.cjs`).
+- Độ trễ ping thời gian thực, dung lượng RAM sử dụng và thời gian uptime.
+
+### 2. Các Endpoint API kiểm tra máy chủ
+- **`GET /api/health`**: Kiểm tra trạng thái sẵn sàng (health check) của máy chủ với thời gian phản hồi nhanh.
+  ```json
+  {
+    "status": "ok",
+    "service": "Cogo Rideshare API",
+    "environment": "production",
+    "uptimeSeconds": 142
+  }
+  ```
+- **`GET /api/debug`**: Trả về toàn bộ thông số chi tiết hệ thống (Node version, OS, PID, RAM RSS/Heap, Port, biến môi trường, số lượng bản ghi sync).
+
+### 3. Xem log kiểm tra khởi động trên Render Dashboard
+Khi máy chủ khởi động thành công, trong tab **Logs** của Render sẽ xuất hiện thông báo:
+```text
+==================================================
+🚀 Cogo Server is LIVE and listening on 0.0.0.0:10000
+🔧 Mode:       PRODUCTION (serving static dist)
+☁️ Platform:   Render Cloud Platform
+📦 Node:       v22.x (linux x64)
+🟢 Health:     http://0.0.0.0:10000/api/health
+🔍 Diagnostics: http://0.0.0.0:10000/api/debug
+==================================================
+```
+
+---
+
 ## 🔄 Cấu Trúc CI/CD Workflows
 
 Dự án được trang bị sẵn các kịch bản kiểm thử và triển khai tự động trong thư mục `.github/workflows/` (và `workflow/`):
