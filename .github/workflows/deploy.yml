@@ -102,6 +102,10 @@ jobs:
     name: Deploy & Publish Preview
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      deployments: write
     environment:
       name: ${{ (github.event_name == 'pull_request' || contains(github.ref_name, 'preview') || inputs.environment == 'preview') && 'preview' || 'production' }}
       url: ${{ steps.set-preview-url.outputs.preview_url }}
@@ -155,14 +159,16 @@ jobs:
           echo "env_type=$ENV_TYPE" >> $GITHUB_OUTPUT
           echo "Selected Deployment URL: $TARGET_URL ($ENV_TYPE)"
 
-      - name: Trigger Render Deploy Hook (Optional)
-        if: env.RENDER_DEPLOY_HOOK_URL != ''
+      - name: Trigger Render Deploy Hook
         run: |
-          echo "Triggering Render webhook deployment..."
-          curl -s -X POST "$RENDER_DEPLOY_HOOK_URL" || true
-          echo "✅ Render deploy hook triggered successfully."
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "🚀 Triggering Render Deploy Hook..."
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+            echo "✅ Render deploy hook triggered successfully."
+          else
+            echo "ℹ️ RENDER_DEPLOY_HOOK_URL secret not provided or empty. Calling curl directly as configured:"
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" || true
+          fi
 
       - name: Publish GitHub Action Job Summary
         run: |
