@@ -1,0 +1,24 @@
+# Render Blueprint Specification
+# Docs: https://render.com/docs/blueprint-spec
+# Automatic Preview Environments: https://render.com/docs/preview-environments
+
+services:
+  - type: web
+    name: cogo-rideshare
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+
+# Cấu hình Ephemeral Preview Environments cho mỗi Pull Request
+previews:
+  generation: automatic
+  expireAfterDays: 3
