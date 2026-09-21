@@ -155,7 +155,7 @@ Dự án được trang bị sẵn các kịch bản kiểm thử và triển kh
 
 ### 🌐 Preview Environments & Khung Thông Tin Trên Pull Request (PR)
 Dự án tích hợp tệp cấu hình **`render.yaml`** (Render Blueprint IaC) hỗ trợ tạo môi trường Ephemeral Preview:
-- **Tự động sinh URL:** Mỗi PR sẽ tương ứng với URL dạng `https://cogo-rideshare-pr-<PR_NUMBER>.onrender.com`.
+- **Tự động sinh URL:** Mỗi PR sẽ tương ứng với URL dạng `https://test-ba-u8yy-pr-<PR_NUMBER>.onrender.com` (Bản Production chính thức: `https://test-ba-u8yy.onrender.com`).
 - **Khung thông tin xem trước trong PR:** Bot CI/CD tự động bình luận một khối **"KHUNG THÔNG TIN XEM TRƯỚC"** nổi bật ngay trong cuộc trò chuyện PR, kèm link bấm trực tiếp, link healthcheck `/api/health`, và link debug `/api/debug`.
 - **Nút "View deployment":** Tự động liên kết với hệ thống GitHub Deployments để kích hoạt nút kiểm tra trực quan trên giao diện GitHub.
 - **Tự động hủy:** Khi PR được gộp (merged) hoặc đóng (closed), Render tự động thu hồi môi trường sau 3 ngày để tối ưu chi phí.

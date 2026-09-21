@@ -135,18 +135,19 @@ jobs:
         run: |
           IS_PR="${{ github.event_name == 'pull_request' }}"
           IS_PREVIEW_BRANCH="${{ contains(github.ref_name, 'preview') || inputs.environment == 'preview' }}"
+          SERVICE_NAME="${{ vars.RENDER_SERVICE_NAME || 'test-ba-u8yy' }}"
           
-          # Render dynamic PR preview URL format matching render.yaml (cogo-rideshare-pr-<PR_NUM>)
+          # Render dynamic PR preview URL format matching render.yaml (test-ba-u8yy-pr-<PR_NUM>)
           if [ "$IS_PR" = "true" ]; then
             PR_NUM="${{ github.event.pull_request.number }}"
-            TARGET_URL="https://cogo-rideshare-pr-${PR_NUM}.onrender.com"
-            ENV_TYPE="Pull Request Preview"
+            TARGET_URL="https://${SERVICE_NAME}-pr-${PR_NUM}.onrender.com"
+            ENV_TYPE="Pull Request Preview (#${PR_NUM})"
           elif [ "$IS_PREVIEW_BRANCH" = "true" ]; then
             CLEAN_BRANCH=$(echo "${{ github.ref_name }}" | tr '/' '-' | tr '_' '-')
-            TARGET_URL="https://cogo-rideshare-${CLEAN_BRANCH}.onrender.com"
+            TARGET_URL="https://${SERVICE_NAME}-${CLEAN_BRANCH}.onrender.com"
             ENV_TYPE="Branch Preview (${{ github.ref_name }})"
           else
-            TARGET_URL="https://cogo-rideshare.onrender.com"
+            TARGET_URL="https://${SERVICE_NAME}.onrender.com"
             ENV_TYPE="Production"
           fi
           
